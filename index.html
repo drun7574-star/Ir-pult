@@ -32,6 +32,7 @@ h1{font-size:20px;margin:6px 0 12px;display:flex;justify-content:space-between;a
 .off .b:not(.pw){opacity:.4}
 .b{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 #toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#000c;color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;max-width:90%;text-align:center;z-index:9}
+.in{width:100%;padding:12px;border-radius:12px;border:0;background:var(--btn);color:var(--tx);font:inherit;margin-bottom:8px}
 #stat{font-size:13px;text-align:center;margin:0 0 12px;color:var(--mut)}
 .note{font-size:12px;color:var(--mut);text-align:center;margin-top:14px;line-height:1.4}
 </style></head><body>
@@ -42,6 +43,7 @@ h1{font-size:20px;margin:6px 0 12px;display:flex;justify-content:space-between;a
 <div id="remote"><div class="top"><button class="back" id="back">← Назад</button><b id="title" style="flex:1"></b><i class="ir" id="ir2"></i></div>
 <div class="body"><button class="b" id="brand" style="width:100%;margin-bottom:12px;display:none"></button><div class="scr" id="scr"></div><div class="rows" id="rows"></div></div></div>
 </div>
+<div id="cams" class="app" style="display:none"><div class="top"><button class="back" id="cback">← Назад</button><b>📹 Камеры</b></div><div class="body"><div class="scr" id="cst" style="min-height:48px">Нажми «Найти» — приложение проверит устройства в домашней сети.</div><input class="in" id="sub" value="192.168.1"><button class="b" id="scan" style="width:100%;margin-bottom:12px">🔍 Найти камеры</button><div class="rows" id="clist"></div><div id="view" style="display:none;margin-top:12px"><img id="vimg" style="width:100%;border-radius:12px;display:none" alt=""><video id="vvid" playsinline autoplay style="width:100%;border-radius:12px;display:none"></video><div class="row" style="grid-template-columns:1fr 1fr;margin-top:8px"><button class="b" id="vsnd">🔊 Звук</button><button class="b" id="vstop">⏹ Стоп</button></div></div><p class="note">Добавить вручную (адрес потока или снимка):</p><input class="in" id="curl" placeholder="http://192.168.1.50/video.mjpg"><select class="in" id="ctype"><option value="mjpeg">MJPEG-поток</option><option value="snap">Снимок (обновляется)</option><option value="hls">HLS (.m3u8, со звуком)</option></select><button class="b" id="cadd" style="width:100%">Добавить</button></div></div>
 <div id="toast"></div>
 <script src="cordova.js"></script>
 <script>
@@ -113,12 +115,39 @@ function send(code){let e;try{e=enc(code)}catch(x){return toast('Неверны�
  const T=window.irTransmitter;if(!T)return toast('Симуляция: '+code);
  try{T.transmit(e.f,e.d.join(','),()=>toast('📡 Отправлено'),er=>toast('Ошибка ИК: '+er))}catch(x){toast('Ошибка ИК: '+x)}}
 const KEY=it=>cur.n+'|'+(it[0]||it[3]);
-function press(it){blink();it[1](cur.s);draw();const k=KEY(it),c=k in CODES?CODES[k]:dflt(k);if(c)send(c);else toast('Код не задан. Зажми кнопку на 1 сек.')}
+function press(it){blink();it[1](cur.s);draw();const k=KEY(it),L=k in CODES?[CODES[k]]:allCodes(k);if(L.length&&L[0])sendAll(L);else toast('Код не задан. Зажми кнопку на 1 сек.')}
 function edit(it){const k=KEY(it),v=prompt('Код для «'+k.replace('|',' → ')+'»\n\nФормат (hex):\nNEC:адрес:команда\nSAMSUNG:07:02\nSONY:01:15\nRAW:38000:9000,4500,560,...\n\nПусто — удалить код',(k in CODES?CODES[k]:dflt(k))||'NEC:00:');if(v===null)return;CODES[k]=v.trim();saveC();toast(v.trim()?'Код сохранён':'Код удалён')}
+function allCodes(k){if(k.startsWith('Телевизор|')){const l=k.slice(10),o=[];for(const b in BR){const v=BR[b][1][l];if(v!==undefined)o.push(BR[b][0]+v)}return o}const d=DEF[k];return d?[d]:[]}
+function sendAll(L){L.forEach((c,i)=>setTimeout(()=>send(c),i*180))}
+/* ===== КАМЕРЫ ===== */
+const CAMP=[['mjpeg','/video.mjpg'],['mjpeg','/videostream.cgi'],['mjpeg','/mjpeg'],['mjpeg','/video.cgi'],['mjpeg','/axis-cgi/mjpg/video.cgi'],['mjpeg','/cgi-bin/mjpg/video.cgi'],['snap','/snapshot.jpg'],['snap','/snap.jpg'],['snap','/image.jpg'],['snap','/cgi-bin/snapshot.cgi'],['snap','/jpg/image.jpg'],['snap','/capture']];
+const PORTS=[80,8080,81,88];
+let CAMS=[],snapT;try{CAMS=JSON.parse(localStorage.getItem('cams')||'[]')}catch(e){}
+const saveCams=()=>{try{localStorage.setItem('cams',JSON.stringify(CAMS))}catch(e){}};
+function openCams(){$('home').style.display='none';$('cams').style.display='block';drawCams()}
+function probe(h,p,ms){return new Promise(r=>{const c=new AbortController(),t=setTimeout(()=>{c.abort();r(false)},ms);fetch(`http://${h}:${p}/`,{mode:'no-cors',signal:c.signal,cache:'no-store'}).then(()=>{clearTimeout(t);r(true)}).catch(()=>{clearTimeout(t);r(false)})})}
+function imgOk(u,ms){return new Promise(r=>{const i=new Image(),t=setTimeout(()=>{i.src='';r(false)},ms);i.onload=()=>{clearTimeout(t);i.src='';r(true)};i.onerror=()=>{clearTimeout(t);r(false)};i.src=u})}
+async function scan(){const sub=$('sub').value.trim().replace(/\.$/,''),q=[];for(let i=1;i<255;i++)q.push(sub+'.'+i);let done=0;const found=[];$('cst').textContent='Сканирую 0/254…';
+ await Promise.all(Array.from({length:40},async()=>{while(q.length){const h=q.shift();for(const p of PORTS){if(await probe(h,p,1200)){found.push([h,p]);break}}done++;if(done%10==0)$('cst').textContent=`Сканирую ${done}/254, найдено: ${found.length}`}}));
+ $('cst').textContent=`Найдено веб-устройств: ${found.length}. Проверяю камеры…`;
+ for(const [h,p] of found){const base=`http://${h}:${p}`;let hit=null;for(const [t,pa] of CAMP){if(await imgOk(base+pa,2500)){hit=[t,pa];break}}
+  if(hit){if(!CAMS.some(c=>c.url===base+hit[1]))CAMS.push({n:'Камера '+h,url:base+hit[1],t:hit[0]})}else if(!CAMS.some(c=>c.url===base+'/'))CAMS.push({n:'Устройство '+h,url:base+'/',t:'web'})}
+ saveCams();drawCams();$('cst').textContent='Готово. Выбери камеру ниже.'}
+function drawCams(){const L=$('clist');L.innerHTML='';if(!CAMS.length){L.innerHTML='<div class="note">Пока пусто</div>';return}
+ CAMS.forEach((c,i)=>{const r=document.createElement('div');r.className='row';r.style.gridTemplateColumns='1fr auto';const b=document.createElement('button');b.className='b';b.textContent='▶ '+c.n+(c.t==='web'?' (веб-страница)':'');b.onclick=()=>play(c);const d=document.createElement('button');d.className='b';d.textContent='✕';d.onclick=()=>{CAMS.splice(i,1);saveCams();drawCams()};r.append(b,d);L.appendChild(r)})}
+function stopView(){clearInterval(snapT);$('vimg').src='';const V=$('vvid');V.pause();V.removeAttribute('src');$('view').style.display='none'}
+function play(c){stopView();const I=$('vimg'),V=$('vvid');if(c.t==='web'){window.open(c.url,'_system');return toast('Открываю веб-страницу устройства')}
+ $('view').style.display='block';I.style.display=V.style.display='none';
+ if(c.t==='mjpeg'){I.style.display='block';I.src=c.url}
+ else if(c.t==='snap'){I.style.display='block';const f=()=>{I.src=c.url+(c.url.includes('?')?'&':'?')+'t='+Date.now()};f();snapT=setInterval(f,1000)}
+ else{V.style.display='block';V.src=c.url;V.muted=false;V.play().catch(()=>{})}}
+$('scan').onclick=scan;$('cback').onclick=()=>{stopView();$('cams').style.display='none';$('home').style.display='block'};$('vstop').onclick=stopView;
+$('vsnd').onclick=()=>{const V=$('vvid');if(V.style.display==='none')return toast('В MJPEG и снимках звука нет — нужен HLS-поток');V.muted=!V.muted;toast(V.muted?'Звук выкл':'Звук вкл')};
+$('cadd').onclick=()=>{const u=$('curl').value.trim();if(!/^https?:\/\//.test(u))return toast('Нужен адрес вида http://…');CAMS.push({n:'Камера '+u.replace(/^https?:\/\//,'').slice(0,24),url:u,t:$('ctype').value});saveCams();drawCams();$('curl').value=''};
 let cur=null,irT;
 function blink(){['ir1','ir2'].forEach(i=>$(i).classList.add('on'));clearTimeout(irT);irT=setTimeout(()=>['ir1','ir2'].forEach(i=>$(i).classList.remove('on')),120);try{navigator.vibrate&&navigator.vibrate(15)}catch(e){}}
-function home(){$('grid').innerHTML='';D.forEach((d,k)=>{const b=document.createElement('button');b.className='dev'+(d.s.on?' lit':'');b.innerHTML=`<span>${d.i}</span>${d.n}`;b.onclick=()=>open(k);$('grid').appendChild(b)})}
-function open(k){cur=D[k];$('brand').style.display=cur.n==='Телевизор'?'block':'none';updBrand();$('home').style.display='none';$('remote').style.display='block';$('title').textContent=cur.i+' '+cur.n;build();draw()}
+function home(){$('grid').innerHTML='';D.forEach((d,k)=>{const b=document.createElement('button');b.className='dev'+(d.s.on?' lit':'');b.innerHTML=`<span>${d.i}</span>${d.n}`;b.onclick=()=>open(k);$('grid').appendChild(b)});const cc=document.createElement('button');cc.className='dev';cc.innerHTML='<span>📹</span>Камеры (поиск)';cc.onclick=openCams;$('grid').appendChild(cc)}
+function open(k){cur=D[k];$('brand').style.display='none';updBrand();$('home').style.display='none';$('remote').style.display='block';$('title').textContent=cur.i+' '+cur.n;build();draw()}
 function draw(){const g=cur.glow?`<div class="glow" style="background:${cur.glow(cur.s)};box-shadow:0 0 30px 10px ${cur.glow(cur.s)}"></div>`:'';$('scr').innerHTML=g+cur.info(cur.s).replace(/\n/g,'<br>');$('rows').classList.toggle('off',!cur.s.on)}
 function build(){const R=$('rows');R.innerHTML='';cur.rows.forEach(row=>{const r=document.createElement('div');r.className='row';r.style.gridTemplateColumns=`repeat(${row.length},1fr)`;row.forEach(it=>{if(!it){r.appendChild(document.createElement('div'));return}
 const b=document.createElement('button');b.className='b '+(it[2]||'');b.textContent=it[0];if(it[3])b.style.background=it[3];
