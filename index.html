@@ -41,7 +41,7 @@ h1{font-size:20px;margin:6px 0 12px;display:flex;justify-content:space-between;a
 <div class="grid" id="grid"></div>
 <p id="stat"></p><p class="note">Выбери устройство — откроется его пульт.<br>Зажми любую кнопку на 1 секунду, чтобы задать или изменить её ИК-код.</p></div>
 <div id="remote"><div class="top"><button class="back" id="back">← Назад</button><b id="title" style="flex:1"></b><i class="ir" id="ir2"></i></div>
-<div class="body"><button class="b" id="brand" style="width:100%;margin-bottom:12px;display:none"></button><div class="scr" id="scr"></div><div class="rows" id="rows"></div></div></div>
+<div class="body"><div class="scr" id="scr"></div><div class="rows" id="rows"></div></div></div>
 </div>
 <div id="cams" class="app" style="display:none"><div class="top"><button class="back" id="cback">← Назад</button><b>📹 Камеры</b></div><div class="body"><div class="scr" id="cst" style="min-height:48px">Нажми «Найти» — приложение проверит устройства в домашней сети.</div><input class="in" id="sub" value="192.168.1"><button class="b" id="scan" style="width:100%;margin-bottom:12px">🔍 Найти камеры</button><div class="rows" id="clist"></div><div id="view" style="display:none;margin-top:12px"><img id="vimg" style="width:100%;border-radius:12px;display:none" alt=""><video id="vvid" playsinline autoplay style="width:100%;border-radius:12px;display:none"></video><div class="row" style="grid-template-columns:1fr 1fr;margin-top:8px"><button class="b" id="vsnd">🔊 Звук</button><button class="b" id="vstop">⏹ Стоп</button></div></div><p class="note">Добавить вручную (адрес потока или снимка):</p><input class="in" id="curl" placeholder="http://192.168.1.50/video.mjpg"><select class="in" id="ctype"><option value="mjpeg">MJPEG-поток</option><option value="snap">Снимок (обновляется)</option><option value="hls">HLS (.m3u8, со звуком)</option></select><button class="b" id="cadd" style="width:100%">Добавить</button></div></div>
 <div id="toast"></div>
@@ -57,7 +57,7 @@ const COLORS=['#ff2d2d','#ff8a00','#ffe600','#35e04a','#00e5d0','#2d7bff','#8a3d
 const D=[
 {n:'Кондиционер',i:'❄️',s:{on:0,t:24,m:'Авто',f:'Авто',sw:0},
  info:s=>s.on?`${s.t}°C\nРежим: ${s.m}\nВентилятор: ${s.f}\nЖалюзи: ${s.sw?'качаются':'зафикс.'}`:'ВЫКЛ',
- rows:[[PW,['Режим',s=>s.m=cyc(['Авто','Холод','Тепло','Сушка','Вент.'],s.m)]],[['−',s=>s.t=cl(s.t-1,16,30)],['+',s=>s.t=cl(s.t+1,16,30)]],[['Скорость',s=>s.f=cyc(['Авто','Низк.','Средн.','Высок.'],s.f)],['Жалюзи',s=>s.sw=!s.sw]],[['Эко',s=>{s.t=26;s.m='Холод'}],['Сон',s=>{s.t=cl(s.t+1,16,30)}],['Турбо',s=>{s.f='Высок.';s.t=16}]]]},
+ rows:[[PW,['Режим',s=>s.m=cyc(['Авто','Холод','Тепло','Сушка','Вент.'],s.m)]],[['−',s=>s.t=cl(s.t-1,16,30)],['+',s=>s.t=cl(s.t+1,16,30)]],[['Скорость',s=>s.f=cyc(['Авто','Низк.','Средн.','Высок.'],s.f)],['Жалюзи',s=>s.sw=!s.sw]],[['Эко',s=>{s.t=26;s.m='Холод'}],['Сон',s=>{s.t=cl(s.t+1,16,30)}],['Турбо',s=>{s.f='Высок.';s.t=16}]],[['📡 Автопоиск кода (вкл/выкл)',()=>bruteStart(),'util']]]},
 {n:'Телевизор',i:'📺',s:{on:0,v:20,ch:1,mu:0,src:'HDMI 1'},
  info:s=>s.on?`Канал ${s.ch}\nГромкость: ${s.mu?'🔇':s.v}\nВход: ${s.src}`:'ВЫКЛ',
  rows:[[PW,['🔇',s=>s.mu=!s.mu],['Вход',s=>s.src=cyc(['HDMI 1','HDMI 2','AV','USB','ТВ'],s.src)]],...nums((s,n)=>{s.ch=n}),[['Гр −',s=>{s.v=cl(s.v-5,0,100);s.mu=0}],['Меню',s=>{}],['Гр +',s=>{s.v=cl(s.v+5,0,100);s.mu=0}]],[['Кан −',s=>s.ch=Math.max(1,s.ch-1)],['Кан +',s=>s.ch++]],...dpad(s=>{},s=>{},s=>{},s=>{},s=>{}),[['Назад',s=>{}],['Домой',s=>{}],['Инфо',s=>{}]]]},
@@ -80,24 +80,76 @@ const D=[
  rows:[[PW,['⏺ REC',s=>s.rec=!s.rec],['📸',s=>s.ph++]],[['Zoom −',s=>s.z=cl(s.z-.5,1,8)],['Zoom +',s=>s.z=cl(s.z+.5,1,8)]],...dpad(s=>s.py=cl(s.py+10,-90,90),s=>s.py=cl(s.py-10,-90,90),s=>s.px=cl(s.px-10,-180,180),s=>s.px=cl(s.px+10,-180,180),s=>{s.px=0;s.py=0}),[['🌙 Ночь',s=>s.nt=!s.nt],['🎤',s=>s.mic=!s.mic]]]},
 {n:'Вентилятор',i:'🌀',s:{on:0,sp:1,osc:0,tm:0,md:'Норма'},
  info:s=>s.on?`Скорость: ${s.sp}/3\nПоворот: ${s.osc?'вкл':'выкл'}\nРежим: ${s.md}\nТаймер: ${s.tm?s.tm+' ч':'нет'}`:'ВЫКЛ',
- rows:[[PW,['Поворот',s=>s.osc=!s.osc]],[['Ск −',s=>s.sp=cl(s.sp-1,1,3)],['Ск +',s=>s.sp=cl(s.sp+1,1,3)]],[['Режим',s=>s.md=cyc(['Норма','Природа','Сон'],s.md)],['Таймер',s=>s.tm=cyc([0,1,2,4],s.tm)]]]},
+ rows:[[PW,['Поворот',s=>s.osc=!s.osc]],[['Ск −',s=>s.sp=cl(s.sp-1,1,3)],['Ск +',s=>s.sp=cl(s.sp+1,1,3)]],[['Режим',s=>s.md=cyc(['Норма','Природа','Сон'],s.md)],['Таймер',s=>s.tm=cyc([0,1,2,4],s.tm)]],[['📡 Автопоиск кода (вкл/выкл)',()=>bruteStart(),'util']]]},
 {n:'Колонка / Аудио',i:'🔊',s:{on:0,v:30,pl:0,tr:1,bs:0,bt:0},
  info:s=>s.on?`${s.pl?'▶':'⏸'} Трек ${s.tr}\nГромкость: ${s.v}\nБас: ${s.bs>0?'+':''}${s.bs}\nBluetooth: ${s.bt?'подключён':'ожидание'}`:'ВЫКЛ',
- rows:[[PW,['Bluetooth',s=>s.bt=!s.bt]],[['⏮',s=>s.tr=Math.max(1,s.tr-1)],['⏯',s=>s.pl=!s.pl],['⏭',s=>s.tr++]],[['Гр −',s=>s.v=cl(s.v-5,0,100)],['Гр +',s=>s.v=cl(s.v+5,0,100)]],[['Бас −',s=>s.bs=cl(s.bs-1,-5,5)],['Бас +',s=>s.bs=cl(s.bs+1,-5,5)]]]}
+ rows:[[PW,['Bluetooth',s=>s.bt=!s.bt]],[['⏮',s=>s.tr=Math.max(1,s.tr-1)],['⏯',s=>s.pl=!s.pl],['⏭',s=>s.tr++]],[['Гр −',s=>s.v=cl(s.v-5,0,100)],['Гр +',s=>s.v=cl(s.v+5,0,100)]],[['Бас −',s=>s.bs=cl(s.bs-1,-5,5)],['Бас +',s=>s.bs=cl(s.bs+1,-5,5)]]]},
+{n:'Бонус',i:'🎉',s:{on:1},bonus:1,info:()=>'20 забавных функций.\nНикуда не отправляют ИК-сигнал.',
+ rows:[
+ [['🔦 Фонарик',bonusTorch,'util']],
+ [['📣 Бип',()=>beep(880,120),'util'],['🚨 Сирена',siren,'util']],
+ [['🎲 Кубик',bonusDice,'util'],['🪙 Монетка',bonusCoin,'util']],
+ [['🎱 Число 1-100',bonusRand,'util']],
+ [['🔮 Шар предсказаний',bonus8ball,'util']],
+ [['📳 Вибро: коротко',()=>bonusVibe([80]),'util'],['📳 Вибро: SOS',()=>bonusVibe([80,60,80,60,80,180,220,100,220,100,220,180,80,60,80,60,80]),'util']],
+ [['🔴🟢🔵 Вспышка экрана',bonusFlash,'util']],
+ [['🌙 Ночной экран',bonusNight,'util']],
+ [['⏱ Старт/стоп секундомер',bonusStopwatch,'util']],
+ [['⏲ Таймер 10 сек',()=>bonusTimer(10),'util'],['⏲ Таймер 60 сек',()=>bonusTimer(60),'util']],
+ [['🔋 Заряд батареи',bonusBattery,'util']],
+ [['🎵 Мелодия',bonusMelody,'util']],
+ [['📈 Счётчик кликов',bonusClick,'util']],
+ [['💬 Случайная фраза',bonusQuote,'util']],
+ [['💡 Факт дня',bonusFact,'util']],
+ [['🎨 Светлая/тёмная тема',bonusTheme,'util']],
+ [['📋 Скопировать статус',bonusClip,'util']],
+ [['🏆 Счётчик нажатий пульта',bonusTapCounter,'util']],
+ [['🧮 Таблица умножения (случ.)',bonusMulti,'util']],
+ [['🫧 Сгенерировать пароль',bonusPass,'util']]
+ ]}
 ];
+let torchTrack=null;
+function beep(f,ms){try{const ctx=new(window.AudioContext||window.webkitAudioContext)();const o=ctx.createOscillator(),g=ctx.createGain();o.frequency.value=f;o.connect(g);g.connect(ctx.destination);g.gain.setValueAtTime(.15,ctx.currentTime);o.start();setTimeout(()=>{o.stop();ctx.close()},ms)}catch(e){toast('Звук недоступен')}}
+function siren(){[600,900,600,900,600,900].forEach((f,i)=>setTimeout(()=>beep(f,180),i*190));toast('🚨 Сирена')}
+function bonusDice(){toast('🎲 Выпало: '+(1+Math.floor(Math.random()*6)))}
+function bonusCoin(){toast(Math.random()<.5?'🪙 Орёл':'🪙 Решка')}
+function bonusRand(){toast('🎱 '+(1+Math.floor(Math.random()*100)))}
+function bonus8ball(){const a=['Да','Нет','Скорее да','Скорее нет','Спроси позже','Неоднозначно','Точно да!','Маловероятно'];toast('🔮 '+a[Math.floor(Math.random()*a.length)])}
+function bonusVibe(p){try{navigator.vibrate&&navigator.vibrate(p);toast('📳 Вибро')}catch(e){toast('Вибро недоступно')}}
+function bonusFlash(){const o=document.createElement('div');o.style.cssText='position:fixed;inset:0;z-index:99;background:red';document.body.appendChild(o);const c=['red','lime','blue','yellow','white'];let i=0;const t=setInterval(()=>{o.style.background=c[i++%c.length];if(i>14){clearInterval(t);o.remove()}},150)}
+function bonusNight(){document.body.style.filter=document.body.style.filter?'':'brightness(.3) sepia(.4)';toast(document.body.style.filter?'🌙 Ночной режим включён':'☀️ Обычный режим')}
+let swT=null,swS=0;function bonusStopwatch(){if(swT){clearInterval(swT);swT=null;toast('⏱ Остановлено: '+swS.toFixed(1)+' с');return}swS=0;const t0=Date.now();swT=setInterval(()=>{swS=(Date.now()-t0)/1000},100);toast('⏱ Старт')}
+function bonusTimer(s){toast('⏲ Таймер на '+s+' сек запущен');setTimeout(()=>{beep(1000,300);toast('⏰ Время вышло!');try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}},s*1000)}
+function bonusBattery(){if(navigator.getBattery)navigator.getBattery().then(b=>toast('🔋 '+Math.round(b.level*100)+'%'+(b.charging?' (заряжается)':'')));else toast('Браузер не даёт доступ к заряду')}
+function bonusMelody(){[523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,180),i*200));toast('🎵 Динь-дон')}
+let clickCt=0;function bonusClick(){clickCt++;toast('📈 Кликов: '+clickCt)}
+function bonusQuote(){const q=['Сделай перерыв, ты это заслужил.','Главное — начать.','Улыбнись, это бесплатно.','Ты справишься.'];toast('💬 '+q[Math.floor(Math.random()*q.length)])}
+function bonusFact(){const f=['У осьминогих сердец два желудка.','Страус не может прыгать назад.','Бананы — ягоды, а не фрукты.','Мёд не портится тысячи лет.'];toast('💡 '+f[Math.floor(Math.random()*f.length)])}
+function bonusTheme(){document.documentElement.dataset.theme=document.documentElement.dataset.theme==='light'?'dark':'light';toast('🎨 Тема переключена')}
+function bonusClip(){const t=cur?cur.info(cur.s):'готово';navigator.clipboard&&navigator.clipboard.writeText(t).then(()=>toast('📋 Скопировано')).catch(()=>toast('Не удалось скопировать'))}
+let tapCt=0;function bonusTapCounter(){tapCt++;toast('🏆 Нажатий всего за сессию: '+tapCt)}
+function bonusMulti(){const a=1+Math.floor(Math.random()*9),b=1+Math.floor(Math.random()*9);toast('🧮 '+a+' × '+b+' = '+(a*b))}
+function bonusPass(){const ch='abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789!@#';let p='';for(let i=0;i<12;i++)p+=ch[Math.floor(Math.random()*ch.length)];toast('🫧 '+p)}
+function bonusTorch(){navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(s=>{const tr=s.getVideoTracks()[0];const cap=tr.getCapabilities&&tr.getCapabilities();if(cap&&cap.torch){const on=!torchTrack;tr.applyConstraints({advanced:[{torch:on}]});if(on)torchTrack=tr;else{tr.stop();torchTrack=null}toast(on?'🔦 Фонарик включён':'🔦 Фонарик выключен')}else{s.getTracks().forEach(t=>t.stop());toast('Фонарик не поддерживается браузером')}}).catch(()=>toast('Нет доступа к камере для фонарика'))}
 /* ===== РЕАЛЬНЫЙ ИК ===== */
 let CODES={};try{CODES=JSON.parse(localStorage.getItem('ircodes')||'{}')}catch(e){}
 const saveC=()=>{try{localStorage.setItem('ircodes',JSON.stringify(CODES))}catch(e){}};
+/* Банки кодов по брендам для телевизоров и аудиосистем. При нажатии кнопки код
+   уходит сразу для всех брендов подряд — устройство само отзовётся на свой. */
 const SM={'⏻':'02','🔇':'0F','Вход':'01',1:'04',2:'05',3:'06',4:'08',5:'09',6:'0A',7:'0C',8:'0D',9:'0E',0:'11','Гр −':'0B','Гр +':'07','Меню':'1A','Кан −':'10','Кан +':'12','▲':'60','▼':'61','◀':'65','▶':'62','OK':'68','Назад':'58','Домой':'79','Инфо':'1F'};
-const LM={'⏻':'02','☀−':'BA','☀+':'3A','#ff2d2d':'1A','#35e04a':'9A','#2d7bff':'A2','#ffffff':'22'};
-const DEF={};const LGM={'⏻':'08','🔇':'09','Вход':'0B',1:'11',2:'12',3:'13',4:'14',5:'15',6:'16',7:'17',8:'18',9:'19',0:'10','Гр −':'03','Гр +':'02','Меню':'43','Кан −':'01','Кан +':'00','▲':'40','▼':'41','◀':'07','▶':'06','OK':'44','Назад':'28'};
+const LGM={'⏻':'08','🔇':'09','Вход':'0B',1:'11',2:'12',3:'13',4:'14',5:'15',6:'16',7:'17',8:'18',9:'19',0:'10','Гр −':'03','Гр +':'02','Меню':'43','Кан −':'01','Кан +':'00','▲':'40','▼':'41','◀':'07','▶':'06','OK':'44','Назад':'28'};
 const SOM={'⏻':'15','🔇':'14','Вход':'25',1:'00',2:'01',3:'02',4:'03',5:'04',6:'05',7:'06',8:'07',9:'08',0:'09','Гр −':'13','Гр +':'12','Кан −':'11','Кан +':'10'};
 const TOM={'⏻':'12','🔇':'10','Вход':'0F',1:'01',2:'02',3:'03',4:'04',5:'05',6:'06',7:'07',8:'08',9:'09',0:'00','Гр −':'1E','Гр +':'1A','Кан −':'1F','Кан +':'1B'};
-const BR={Samsung:['SAMSUNG:07:',SM],LG:['NEC:04:',LGM],Sony:['SONY:01:',SOM],Toshiba:['NEC:40:',TOM]};
-let brand='Samsung';try{brand=localStorage.getItem('brand')||'Samsung'}catch(e){}
-function dflt(k){if(k.startsWith('Телевизор|')){const b=BR[brand],v=b[1][k.slice(10)];return v!==undefined?b[0]+v:undefined}return DEF[k]}
-function updBrand(){$('brand').textContent='🏷 Бренд ТВ: '+brand+' — нажми для подбора'}
-$('brand').onclick=()=>{const n=Object.keys(BR),i=(n.indexOf(brand)+1)%n.length;brand=n[i];try{localStorage.setItem('brand',brand)}catch(e){}updBrand();blink();send(dflt('Телевизор|⏻'));toast('Отправлен «Питание» для '+brand)};for(const k in LM)DEF['LED-лента|'+k]='NEC:00:'+LM[k];
+const PHM={'⏻':'0C','🔇':'10',1:'01',2:'02',3:'03',4:'04',5:'05',6:'06',7:'07',8:'08',9:'09',0:'00','Гр −':'12','Гр +':'11','Кан −':'21','Кан +':'20'};
+const PAM={'⏻':'3D','🔇':'20',1:'01',2:'02',3:'03',4:'04',5:'05',6:'06',7:'07',8:'08',9:'09',0:'00','Гр −':'0D','Гр +':'0C','Кан −':'0F','Кан +':'0E'};
+const SHM={'⏻':'0F','🔇':'18',1:'01',2:'02',3:'03',4:'04',5:'05',6:'06',7:'07',8:'08',9:'09',0:'00','Гр −':'1A','Гр +':'19'};
+const TVBR={Samsung:['SAMSUNG:07:',SM],LG:['NEC:04:',LGM],Sony:['SONY:01:',SOM],Toshiba:['NEC:40:',TOM],Philips:['NEC:00:',PHM],Panasonic:['NEC:40:',PAM],Sharp:['NEC:5A:',SHM]};
+const LM={'⏻':'02','☀−':'BA','☀+':'3A','#ff2d2d':'1A','#35e04a':'9A','#2d7bff':'A2','#ffffff':'22'};
+const DEF={};for(const k in LM)DEF['LED-лента|'+k]='NEC:00:'+LM[k];
+const SPM={'⏻':'15','Bluetooth':'0D','⏮':'33','⏯':'32','⏭':'34','Гр −':'0E','Гр +':'0F'};
+const SPBR={Samsung:['SAMSUNG:07:',SPM],Sony:['SONY:01:',SPM],JBL:['NEC:5A:',SPM],Xiaomi:['NEC:00:',SPM]};
+/* Карта «устройство → банк брендов» делает кнопки универсальными без выбора марки. */
+const UNIV={'Телевизор':TVBR,'Колонка / Аудио':SPBR};
 const hx=v=>parseInt(v,16);
 const bits=(v,n)=>Array.from({length:n},(_,i)=>(v>>i)&1);
 function enc(str){const p=str.trim().split(':'),t=p[0].toUpperCase();
@@ -115,10 +167,20 @@ function send(code){let e;try{e=enc(code)}catch(x){return toast('Неверны�
  const T=window.irTransmitter;if(!T)return toast('Симуляция: '+code);
  try{T.transmit(e.f,e.d.join(','),()=>toast('📡 Отправлено'),er=>toast('Ошибка ИК: '+er))}catch(x){toast('Ошибка ИК: '+x)}}
 const KEY=it=>cur.n+'|'+(it[0]||it[3]);
-function press(it){blink();it[1](cur.s);draw();const k=KEY(it),L=k in CODES?[CODES[k]]:allCodes(k);if(L.length&&L[0])sendAll(L);else toast('Код не задан. Зажми кнопку на 1 сек.')}
+function press(it){blink();it[1](cur.s);draw();if(it[2]==='util')return;const k=KEY(it),L=k in CODES?[CODES[k]]:allCodes(k);if(L.length&&L[0])sendAll(L);else toast('Код не задан. Зажми кнопку на 1 сек.')}
 function edit(it){const k=KEY(it),v=prompt('Код для «'+k.replace('|',' → ')+'»\n\nФормат (hex):\nNEC:адрес:команда\nSAMSUNG:07:02\nSONY:01:15\nRAW:38000:9000,4500,560,...\n\nПусто — удалить код',(k in CODES?CODES[k]:dflt(k))||'NEC:00:');if(v===null)return;CODES[k]=v.trim();saveC();toast(v.trim()?'Код сохранён':'Код удалён')}
-function allCodes(k){if(k.startsWith('Телевизор|')){const l=k.slice(10),o=[];for(const b in BR){const v=BR[b][1][l];if(v!==undefined)o.push(BR[b][0]+v)}return o}const d=DEF[k];return d?[d]:[]}
+function allCodes(k){const sep=k.indexOf('|'),dev=k.slice(0,sep),l=k.slice(sep+1);
+ if(UNIV[dev]){const B=UNIV[dev],o=[];for(const b in B){const v=B[b][1][l];if(v!==undefined)o.push(B[b][0]+v)}return o}
+ const d=DEF[k];return d?[d]:[]}
 function sendAll(L){L.forEach((c,i)=>setTimeout(()=>send(c),i*180))}
+/* Перебор большого набора кодов «Питание» известных брендов — для устройств без готовой
+   карты (кондиционер, вентилятор и т.д.). Смотри на прибор и жми «Стоп», когда сработает. */
+const BRUTE={SAMSUNG:'SAMSUNG:07:02',LG:'NEC:04:08',SONY:'SONY:01:15',TOSHIBA:'NEC:40:12',PHILIPS:'NEC:00:0C',PANASONIC:'NEC:40:3D',SHARP:'NEC:5A:0F',XIAOMI:'NEC:00:1C',HISENSE:'NEC:3D:1A',TCL:'NEC:02:0C',HAIER:'NEC:FC:3D',VESTEL:'NEC:07:02',JVC:'NEC:03:11',AIWA:'NEC:B8:F3',GREE:'NEC:3D:1F',MIDEA:'NEC:4D:19',DAIKIN:'NEC:D5:12',LGAC:'NEC:06:08'};
+let bruteT=null;
+function bruteStart(){if(bruteT)return bruteStop();const names=Object.keys(BRUTE);let i=0;
+ toast('📡 Перебор '+names.length+' кодов. Смотри на прибор, жми «Автопоиск» ещё раз, когда сработает');
+ bruteT=setInterval(()=>{if(i>=names.length){bruteStop();toast('Перебор закончен');return}send(BRUTE[names[i]]);i++},450)}
+function bruteStop(){clearInterval(bruteT);bruteT=null}
 /* ===== КАМЕРЫ ===== */
 const CAMP=[['mjpeg','/video.mjpg'],['mjpeg','/videostream.cgi'],['mjpeg','/mjpeg'],['mjpeg','/video.cgi'],['mjpeg','/axis-cgi/mjpg/video.cgi'],['mjpeg','/cgi-bin/mjpg/video.cgi'],['snap','/snapshot.jpg'],['snap','/snap.jpg'],['snap','/image.jpg'],['snap','/cgi-bin/snapshot.cgi'],['snap','/jpg/image.jpg'],['snap','/capture']];
 const PORTS=[80,8080,81,88];
@@ -147,11 +209,11 @@ $('cadd').onclick=()=>{const u=$('curl').value.trim();if(!/^https?:\/\//.test(u)
 let cur=null,irT;
 function blink(){['ir1','ir2'].forEach(i=>$(i).classList.add('on'));clearTimeout(irT);irT=setTimeout(()=>['ir1','ir2'].forEach(i=>$(i).classList.remove('on')),120);try{navigator.vibrate&&navigator.vibrate(15)}catch(e){}}
 function home(){$('grid').innerHTML='';D.forEach((d,k)=>{const b=document.createElement('button');b.className='dev'+(d.s.on?' lit':'');b.innerHTML=`<span>${d.i}</span>${d.n}`;b.onclick=()=>open(k);$('grid').appendChild(b)});const cc=document.createElement('button');cc.className='dev';cc.innerHTML='<span>📹</span>Камеры (поиск)';cc.onclick=openCams;$('grid').appendChild(cc)}
-function open(k){cur=D[k];$('brand').style.display='none';updBrand();$('home').style.display='none';$('remote').style.display='block';$('title').textContent=cur.i+' '+cur.n;build();draw()}
+function open(k){cur=D[k];$('home').style.display='none';$('remote').style.display='block';$('title').textContent=cur.i+' '+cur.n;build();draw()}
 function draw(){const g=cur.glow?`<div class="glow" style="background:${cur.glow(cur.s)};box-shadow:0 0 30px 10px ${cur.glow(cur.s)}"></div>`:'';$('scr').innerHTML=g+cur.info(cur.s).replace(/\n/g,'<br>');$('rows').classList.toggle('off',!cur.s.on)}
 function build(){const R=$('rows');R.innerHTML='';cur.rows.forEach(row=>{const r=document.createElement('div');r.className='row';r.style.gridTemplateColumns=`repeat(${row.length},1fr)`;row.forEach(it=>{if(!it){r.appendChild(document.createElement('div'));return}
 const b=document.createElement('button');b.className='b '+(it[2]||'');b.textContent=it[0];if(it[3])b.style.background=it[3];
-let tm,lp=0;b.onpointerdown=()=>{lp=0;clearTimeout(tm);tm=setTimeout(()=>{lp=1;edit(it)},900)};b.onpointerup=b.onpointerleave=b.onpointercancel=()=>clearTimeout(tm);b.oncontextmenu=e=>e.preventDefault();b.onclick=()=>{if(!lp)press(it)};r.appendChild(b)});R.appendChild(r)})}
+let tm,lp=0;b.onpointerdown=()=>{if(it[2]==='util')return;lp=0;clearTimeout(tm);tm=setTimeout(()=>{lp=1;edit(it)},900)};b.onpointerup=b.onpointerleave=b.onpointercancel=()=>clearTimeout(tm);b.oncontextmenu=e=>e.preventDefault();b.onclick=()=>{if(!lp)press(it)};r.appendChild(b)});R.appendChild(r)})}
 $('back').onclick=()=>{$('remote').style.display='none';$('home').style.display='block';home()};
 home();setStat();
 </script></body></html>
