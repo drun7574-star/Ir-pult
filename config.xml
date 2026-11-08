@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="com.irpult.app" version="1.0.0" xmlns="http://www.w3.org/ns/widgets">
+    <name>IR Pult</name>
+    <description>Universal IR remote</description>
+    <content src="index.html" />
+    <allow-intent href="*" />
+    <preference name="Orientation" value="portrait" />
+    <preference name="android-minSdkVersion" value="24" />
+    <platform name="android">
+        <preference name="AndroidXEnabled" value="true" />
+    </platform>
+    <plugin name="cordova-plugin-irtransmitter" />
+</widget>
