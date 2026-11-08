@@ -1,7 +1,15 @@
 <?xml version='1.0' encoding='utf-8'?>
-<widget id="com.irpult.app" version="1.0.0" xmlns="http://www.w3.org/ns/widgets">
+<widget id="com.irpult.app" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:android="http://schemas.android.com/apk/res/android">
     <name>IR Pult</name>
     <content src="index.html" />
+    <access origin="*" />
     <allow-intent href="*" />
     <preference name="Orientation" value="portrait" />
+    <preference name="scheme" value="http" />
+    <preference name="hostname" value="localhost" />
+    <platform name="android">
+        <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">
+            <application android:usesCleartextTraffic="true" />
+        </edit-config>
+    </platform>
 </widget>
