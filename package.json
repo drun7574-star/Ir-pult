@@ -1,1 +1,1 @@
-{"name":"ir-pult","version":"1.0.0","private":true,"cordova":{"platforms":["android"],"plugins":{"cordova-plugin-irtransmitter":{}}}}
+{"name":"ir-pult","version":"1.0.0","private":true}
