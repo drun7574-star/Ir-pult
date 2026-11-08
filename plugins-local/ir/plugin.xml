@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin id="cordova-plugin-irlocal" version="1.0.0"
+  xmlns="http://apache.org/cordova/ns/plugins/1.0"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+  <name>IrLocal</name>
+  <js-module src="www/ir.js" name="ir">
+    <clobbers target="irTransmitter" />
+  </js-module>
+  <platform name="android">
+    <config-file target="res/xml/config.xml" parent="/*">
+      <feature name="IrLocal">
+        <param name="android-package" value="com.irpult.IrPlugin" />
+      </feature>
+    </config-file>
+    <config-file target="AndroidManifest.xml" parent="/manifest">
+      <uses-permission android:name="android.permission.TRANSMIT_IR" />
+      <uses-feature android:name="android.hardware.consumerir" android:required="false" />
+    </config-file>
+    <source-file src="src/android/IrPlugin.java" target-dir="src/com/irpult" />
+  </platform>
+</plugin>
